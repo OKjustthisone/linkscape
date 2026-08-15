@@ -1,0 +1,299 @@
+/* ============================================================
+   Linkscape 完整管理页（manager.html）布局样式
+   ============================================================ */
+
+.mgr-page {
+  position: relative;
+  min-height: 100vh;
+}
+
+.mgr-layout {
+  display: flex;
+  height: calc(100vh - 57px);
+  padding: 14px 16px 16px;
+  gap: 14px;
+}
+
+/* 左侧文件夹树 */
+.mgr-tree-pane {
+  width: 264px;
+  flex: none;
+  border-radius: var(--ls-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--ls-surface);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--ls-border);
+}
+.mgr-tree-pane h2 {
+  margin: 0;
+  padding: 14px 16px 10px;
+  font-size: 13px;
+  color: var(--ls-text-dim);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--ls-border);
+}
+.mgr-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+.mgr-tree::-webkit-scrollbar {
+  width: 8px;
+}
+.mgr-tree::-webkit-scrollbar-thumb {
+  background: var(--ls-text-faint);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.mgr-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ls-text);
+  transition: background 0.12s ease;
+  white-space: nowrap;
+}
+.mgr-tree-row:hover {
+  background: var(--ls-hover);
+}
+.mgr-tree-row.current {
+  background: var(--ls-active);
+  color: var(--ls-accent);
+  font-weight: 600;
+}
+.mgr-tree-row .ls-caret {
+  width: 12px;
+}
+
+/* 右侧内容 */
+.mgr-main-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--ls-radius);
+  overflow: hidden;
+  background: var(--ls-surface);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--ls-border);
+}
+
+.mgr-list-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ls-border);
+  flex-wrap: wrap;
+}
+.mgr-crumb {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ls-text);
+  flex: 1;
+  min-width: 120px;
+}
+.mgr-crumb .mgr-crumb-sep {
+  color: var(--ls-text-faint);
+  margin: 0 4px;
+  font-weight: 400;
+}
+.mgr-count {
+  font-size: 12px;
+  color: var(--ls-text-faint);
+}
+.mgr-actions .mgr-filter-active {
+  color: var(--ls-danger);
+  border-color: rgba(229, 72, 77, 0.35);
+  background: rgba(229, 72, 77, 0.08);
+}
+
+.mgr-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+}
+.mgr-list::-webkit-scrollbar {
+  width: 10px;
+}
+.mgr-list::-webkit-scrollbar-thumb {
+  background: var(--ls-text-faint);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.mgr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  min-height: 38px;
+  box-sizing: border-box;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.mgr-row:hover {
+  background: var(--ls-hover);
+}
+.mgr-row.selected {
+  background: var(--ls-active);
+  border-color: rgba(109, 94, 240, 0.35);
+}
+.mgr-row .mgr-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.mgr-row .mgr-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ls-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mgr-favicon-fallback {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  color: var(--ls-text-faint);
+  background: var(--ls-active);
+}
+.mgr-row .mgr-url {
+  font-size: 11.5px;
+  color: var(--ls-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mgr-meta {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--ls-text-faint);
+}
+.mgr-url-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  line-height: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mgr-url-status.invalid {
+  color: var(--ls-danger);
+  background: rgba(229, 72, 77, 0.12);
+}
+.mgr-url-status.unknown {
+  color: #b7791f;
+  background: rgba(183, 121, 31, 0.12);
+}
+.mgr-url-status.valid {
+  color: #2f855a;
+  background: rgba(47, 133, 90, 0.12);
+}
+.mgr-url-error {
+  color: var(--ls-danger);
+  font-size: 11.5px;
+}
+.mgr-date {
+  white-space: nowrap;
+}
+
+.mgr-actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+/* 批量工具栏 */
+.mgr-bulkbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--ls-border);
+  background: var(--ls-active);
+}
+
+/* 搜索框在顶栏 */
+.mgr-search {
+  position: relative;
+  width: 280px;
+  max-width: 40vw;
+}
+.mgr-search input {
+  width: 100%;
+  height: 34px;
+  padding: 0 30px 0 32px;
+  border-radius: 10px;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-surface-solid);
+  color: var(--ls-text);
+  font-size: 13px;
+  outline: none;
+}
+.mgr-search input:focus {
+  border-color: var(--ls-accent);
+  box-shadow: 0 0 0 3px rgba(109, 94, 240, 0.16);
+}
+.mgr-search-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ls-text-faint);
+  display: flex;
+}
+.mgr-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ls-text-faint);
+  cursor: pointer;
+  display: none;
+}
+.mgr-search input:not(:placeholder-shown) ~ .mgr-search-clear {
+  display: block;
+}
+
+/* 页脚状态 */
+.mgr-status {
+  padding: 8px 16px;
+  border-top: 1px solid var(--ls-border);
+  font-size: 11.5px;
+  color: var(--ls-text-faint);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

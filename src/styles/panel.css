@@ -1,0 +1,881 @@
+/* ============================================================
+   Linkscape 悬浮面板样式（注入 Shadow DOM，与页面 CSS 完全隔离）
+   ============================================================ */
+
+.ls-root {
+  --ls-accent: #6d5ef0;
+  --ls-accent-2: #8b7cf7;
+  --ls-accent-grad: linear-gradient(135deg, #6d5ef0 0%, #9b8cff 100%);
+  --ls-danger: #e5484d;
+  --ls-zone-w: 14px;
+  --ls-panel-w: 340px;
+  --ls-panel-h: 100%;
+
+  --ls-bg: rgba(255, 255, 255, 0.84);
+  --ls-bg-solid: #f5f5fa;
+  --ls-bg-elev: rgba(255, 255, 255, 0.94);
+  --ls-glass-blur: 24px;
+  --ls-border: rgba(120, 110, 220, 0.18);
+  --ls-text: #1c1b2b;
+  --ls-text-dim: #6b6a7d;
+  --ls-text-faint: #9a99ac;
+  --ls-hover: rgba(109, 94, 240, 0.09);
+  --ls-active: rgba(109, 94, 240, 0.16);
+  --ls-shadow: 0 12px 40px rgba(30, 25, 80, 0.28), 0 2px 8px rgba(30, 25, 80, 0.12);
+  --ls-radius: 18px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ls-root {
+    --ls-bg: rgba(24, 26, 40, 0.88);
+    --ls-bg-solid: #1b1c28;
+    --ls-bg-elev: rgba(36, 38, 58, 0.96);
+    --ls-border: rgba(160, 150, 255, 0.16);
+    --ls-text: #ececf6;
+    --ls-text-dim: #a3a3b8;
+    --ls-text-faint: #74748c;
+    --ls-hover: rgba(139, 124, 247, 0.14);
+    --ls-active: rgba(139, 124, 247, 0.24);
+    --ls-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+  }
+}
+
+.ls-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ls-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 无 backdrop-filter 支持时的实色回退 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ls-root {
+    --ls-bg: var(--ls-bg-solid);
+  }
+}
+
+/* ---------- 边缘触发区（不拦截事件） ---------- */
+.ls-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--ls-zone-w);
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--ls-accent), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.ls-side-left .ls-zone {
+  left: 0;
+  background: linear-gradient(90deg, var(--ls-accent), transparent);
+}
+.ls-side-right .ls-zone {
+  right: 0;
+  background: linear-gradient(270deg, var(--ls-accent), transparent);
+}
+.ls-root.ls-zone-hover .ls-zone {
+  opacity: 0.18;
+}
+
+/* ---------- 面板主体 ---------- */
+.ls-panel {
+  position: absolute;
+  top: calc((100% - var(--ls-panel-h)) / 2);
+  height: var(--ls-panel-h);
+  width: var(--ls-panel-w);
+  max-width: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+  background: var(--ls-bg);
+  backdrop-filter: blur(var(--ls-glass-blur)) saturate(145%);
+  -webkit-backdrop-filter: blur(var(--ls-glass-blur)) saturate(145%);
+  border: 1px solid var(--ls-border);
+  box-shadow: var(--ls-shadow);
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0.22, 1),
+    opacity 0.22s ease;
+  will-change: transform;
+}
+
+.ls-side-left .ls-panel {
+  left: 0;
+  border-radius: 0 var(--ls-radius) var(--ls-radius) 0;
+  border-left: none;
+  transform: translateX(calc(-100% - 24px));
+  opacity: 0.4;
+}
+.ls-side-right .ls-panel {
+  right: 0;
+  border-radius: var(--ls-radius) 0 0 var(--ls-radius);
+  border-right: none;
+  transform: translateX(calc(100% + 24px));
+  opacity: 0.4;
+}
+
+.ls-root.ls-open .ls-panel {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+@media (max-width: 480px) {
+  .ls-panel {
+    max-width: 92%;
+  }
+  .ls-side-left .ls-panel {
+    border-radius: 0 12px 12px 0;
+  }
+  .ls-side-right .ls-panel {
+    border-radius: 12px 0 0 12px;
+  }
+}
+
+/* ---------- 面板内部布局 ---------- */
+#ls-panel-root {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ls-panel-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ls-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  flex: none;
+}
+.ls-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.2px;
+  flex: 1;
+  min-width: 0;
+}
+.ls-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--ls-accent-grad);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  flex: none;
+  box-shadow: 0 2px 6px rgba(109, 94, 240, 0.45);
+}
+.ls-logo-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  border-radius: inherit;
+}
+
+.ls-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ls-text-dim);
+  cursor: pointer;
+  font-size: 15px;
+  flex: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.ls-icon-btn:hover {
+  background: var(--ls-hover);
+  color: var(--ls-text);
+}
+.ls-icon-btn:active {
+  background: var(--ls-active);
+}
+.ls-icon-btn:focus-visible {
+  outline: 2px solid var(--ls-accent);
+  outline-offset: 1px;
+}
+
+/* ---------- 搜索 ---------- */
+.ls-search {
+  padding: 4px 12px 8px;
+  flex: none;
+  position: relative;
+}
+.ls-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ls-search input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 30px 0 32px;
+  border-radius: 10px;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg-elev);
+  color: var(--ls-text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ls-search input::placeholder {
+  color: var(--ls-text-faint);
+}
+.ls-search input:focus {
+  border-color: var(--ls-accent);
+  box-shadow: 0 0 0 3px rgba(109, 94, 240, 0.18);
+}
+.ls-search-icon {
+  position: absolute;
+  left: 9px;
+  color: var(--ls-text-faint);
+  font-size: 13px;
+  pointer-events: none;
+}
+.ls-search-clear {
+  position: absolute;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ls-text-faint);
+  cursor: pointer;
+  font-size: 12px;
+}
+.ls-search input:not(:placeholder-shown) ~ .ls-search-clear {
+  display: inline-flex;
+}
+
+/* ---------- 视图切换 ---------- */
+.ls-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 8px;
+  flex: none;
+}
+.ls-tab {
+  flex: 1;
+  height: 28px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ls-text-dim);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.ls-tab:hover {
+  background: var(--ls-hover);
+  color: var(--ls-text);
+}
+.ls-tab.ls-active {
+  background: var(--ls-active);
+  color: var(--ls-accent);
+}
+
+/* ---------- 列表 ---------- */
+.ls-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px 10px;
+}
+.ls-list::-webkit-scrollbar {
+  width: 8px;
+}
+.ls-list::-webkit-scrollbar-thumb {
+  background: var(--ls-text-faint);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.ls-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  box-sizing: border-box;
+  transition: background 0.12s ease;
+  user-select: none;
+}
+.ls-draggable-icon {
+  cursor: grab;
+  user-select: none;
+}
+.ls-draggable-icon:active {
+  cursor: grabbing;
+}
+.ls-row.ls-dragging {
+  opacity: 0.42;
+}
+.ls-row.ls-drop-before {
+  box-shadow: none;
+}
+.ls-row.ls-drop-after {
+  box-shadow: none;
+}
+.ls-row.ls-drop-before::before,
+.ls-row.ls-drop-after::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ls-accent);
+  pointer-events: none;
+  z-index: 2;
+}
+.ls-row.ls-drop-before::before {
+  top: 1px;
+}
+.ls-row.ls-drop-after::after {
+  bottom: 1px;
+}
+.ls-row.ls-drop-inside {
+  background: var(--ls-active);
+  outline: 1px dashed var(--ls-accent);
+  outline-offset: -2px;
+}
+.ls-row:hover {
+  background: var(--ls-hover);
+}
+.ls-row.ls-selected {
+  background: var(--ls-active);
+}
+.ls-row.ls-active-row {
+  outline: 2px solid var(--ls-accent);
+  outline-offset: -2px;
+}
+
+.ls-caret {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ls-text-faint);
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+.ls-caret.ls-open {
+  transform: rotate(90deg);
+}
+.ls-caret.ls-spacer {
+  visibility: hidden;
+}
+
+.ls-favicon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 3px;
+  object-fit: contain;
+  background: transparent;
+}
+.ls-favicon-fallback {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 4px;
+  background: var(--ls-accent-grad);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ls-generic-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ls-text-faint);
+}
+
+.ls-folder-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ls-accent);
+}
+
+.ls-row-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ls-row-title {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ls-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ls-url-status {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 15px;
+  vertical-align: 1px;
+  font-weight: 600;
+}
+.ls-url-status.invalid {
+  color: var(--ls-danger);
+  background: rgba(229, 72, 77, 0.12);
+}
+.ls-url-status.unknown {
+  color: #b7791f;
+  background: rgba(183, 121, 31, 0.12);
+}
+.ls-row-sub {
+  font-size: 11px;
+  color: var(--ls-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ls-row.ls-folder .ls-row-sub {
+  display: none;
+}
+
+/* 文件夹的层级标记更紧凑，给多层目录标题留出更多宽度。 */
+.ls-row.ls-folder .ls-caret {
+  /* 扩大三角形占位并用负外边距抵消，文件夹图标仍与书签图标对齐。 */
+  width: 18px;
+  margin-right: -4px;
+}
+.ls-row.ls-folder .ls-folder-icon {
+  margin-right: -4px;
+}
+
+.ls-star {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ls-text-faint);
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  opacity: 0;
+  pointer-events: none;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.12s ease;
+}
+.ls-row:hover .ls-star {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ls-star:hover {
+  background: var(--ls-hover);
+  color: #f5b301;
+}
+.ls-star.ls-on {
+  display: inline-flex;
+  opacity: 1;
+  pointer-events: auto;
+  color: #f5b301;
+}
+.ls-star.ls-on:hover {
+  color: var(--ls-danger);
+}
+
+.ls-more {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ls-text-faint);
+  cursor: pointer;
+  font-size: 14px;
+  display: inline-flex;
+  opacity: 0;
+  pointer-events: none;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  transition: background 0.15s ease, color 0.15s ease, opacity 0.12s ease;
+}
+.ls-row:hover .ls-more {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ls-more:hover {
+  background: var(--ls-hover);
+  color: var(--ls-text);
+}
+
+.ls-more svg {
+  display: block;
+}
+
+/* 文件夹行的徽标 */
+.ls-folder-badge {
+  font-size: 10px;
+  color: var(--ls-accent);
+  background: var(--ls-active);
+  border-radius: 4px;
+  padding: 0 5px;
+  flex: none;
+}
+
+/* 搜索结果的路径行 */
+.ls-row-path {
+  font-size: 10.5px;
+  color: var(--ls-text-faint);
+  padding: 0 8px 4px 30px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 多选复选框 */
+.ls-checkbox {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  accent-color: var(--ls-accent);
+  cursor: pointer;
+}
+
+/* ---------- 子列表缩进 ---------- */
+.ls-children {
+  margin-left: 14px;
+  border-left: 1px dashed var(--ls-border);
+  padding-left: 4px;
+}
+.ls-tree-children {
+  /* 主树只保留一个层级偏移：边框 1px + 左边距 5px = 6px。 */
+  margin-left: 5px;
+  border-left: 1px dashed var(--ls-border);
+  padding-left: 0;
+}
+
+/* ---------- 空状态 / 提示 ---------- */
+.ls-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--ls-text-faint);
+  font-size: 12.5px;
+}
+.ls-empty-icon {
+  font-size: 30px;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+.ls-hint {
+  padding: 2px 12px 10px;
+  color: var(--ls-text-faint);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* ---------- 高亮 ---------- */
+.ls-mark {
+  color: var(--ls-accent);
+  font-weight: 700;
+  background: var(--ls-active);
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+/* ---------- 底部工具栏 ---------- */
+.ls-footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--ls-border);
+  font-size: 11px;
+  color: var(--ls-text-faint);
+}
+.ls-footer-hint {
+  color: var(--ls-text-faint);
+  white-space: nowrap;
+}
+.ls-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg-elev);
+  color: var(--ls-text-dim);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.ls-btn:hover {
+  background: var(--ls-hover);
+  color: var(--ls-text);
+}
+.ls-btn.ls-primary {
+  background: var(--ls-accent-grad);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(109, 94, 240, 0.4);
+}
+.ls-btn.ls-primary:hover {
+  filter: brightness(1.08);
+}
+.ls-btn.ls-danger {
+  color: var(--ls-danger);
+  border-color: rgba(229, 72, 77, 0.35);
+}
+.ls-btn.ls-danger:hover {
+  background: rgba(229, 72, 77, 0.12);
+}
+.ls-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---------- 选择工具栏 ---------- */
+.ls-selbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--ls-border);
+  background: var(--ls-active);
+}
+.ls-selbar-count {
+  flex: 1;
+  font-size: 12px;
+  color: var(--ls-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 错误横幅 */
+.ls-error-banner {
+  flex: none;
+  margin: 0 12px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(229, 72, 77, 0.12);
+  border: 1px solid rgba(229, 72, 77, 0.3);
+  color: var(--ls-danger);
+  font-size: 11.5px;
+  word-break: break-all;
+}
+
+/* 撤销提示 */
+.ls-undo-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(109, 94, 240, 0.12);
+  border: 1px solid rgba(109, 94, 240, 0.35);
+  color: var(--ls-text);
+  font-size: 12px;
+}
+.ls-undo-bar span {
+  flex: 1;
+}
+
+/* ---------- 弹层 / 菜单 ---------- */
+.ls-menu {
+  position: absolute;
+  z-index: 5;
+  min-width: 168px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--ls-bg-elev);
+  border: 1px solid var(--ls-border);
+  box-shadow: 0 10px 30px rgba(30, 25, 80, 0.25);
+  backdrop-filter: blur(16px);
+}
+.ls-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ls-text);
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.ls-menu-item:hover {
+  background: var(--ls-hover);
+}
+.ls-menu-item.ls-danger {
+  color: var(--ls-danger);
+}
+.ls-menu-item.ls-danger:hover {
+  background: rgba(229, 72, 77, 0.12);
+}
+.ls-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--ls-border);
+}
+
+/* ---------- 模态框 ---------- */
+.ls-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 18, 40, 0.35);
+  backdrop-filter: blur(3px);
+}
+.ls-menu-overlay {
+  z-index: 4;
+  background: transparent;
+  backdrop-filter: none;
+}
+.ls-modal {
+  width: min(300px, calc(100% - 32px));
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--ls-bg-elev);
+  border: 1px solid var(--ls-border);
+  box-shadow: var(--ls-shadow);
+}
+.ls-modal h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--ls-text);
+}
+.ls-field {
+  margin-bottom: 10px;
+}
+.ls-field label {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ls-text-dim);
+  margin-bottom: 4px;
+}
+.ls-field input,
+.ls-field select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg-solid);
+  color: var(--ls-text);
+  font-size: 12.5px;
+  outline: none;
+}
+.ls-field input:focus,
+.ls-field select:focus {
+  border-color: var(--ls-accent);
+  box-shadow: 0 0 0 3px rgba(109, 94, 240, 0.18);
+}
+.ls-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.ls-error {
+  color: var(--ls-danger);
+  font-size: 11.5px;
+  margin-top: 6px;
+  min-height: 14px;
+}
+
+/* 文件夹选择树（移动对话框） */
+.ls-picktree {
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--ls-border);
+  border-radius: 10px;
+  padding: 4px;
+  background: var(--ls-bg-solid);
+}
+.ls-picktree .ls-row {
+  border-radius: 8px;
+}
+.ls-picktree .ls-row.ls-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 移动过渡中的轻微缩放提示 */
+.ls-root.ls-open .ls-panel-inner {
+  animation: ls-fade-in 0.25s ease;
+}
+@keyframes ls-fade-in {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}

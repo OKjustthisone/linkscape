@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.build/
+.npm-cache/
+*.tsbuildinfo
+.DS_Store
+DEVELOPMENT_PLAN.md
