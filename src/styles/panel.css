@@ -599,8 +599,8 @@
   padding-left: 4px;
 }
 .ls-tree-children {
-  /* 主树只保留一个层级偏移：边框 1px + 左边距 5px = 6px。 */
-  margin-left: 5px;
+  /* 主树每层偏移 9px：相较原来的 6px 增加 50%。 */
+  margin-left: 8px;
   border-left: 1px dashed var(--ls-border);
   padding-left: 0;
 }

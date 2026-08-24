@@ -1,89 +1,161 @@
 # Linkscape
 
-面向 Chrome 的液态玻璃书签管理扩展：鼠标靠近页面左侧（或右侧）边缘的指定高度范围时，自动展开书签面板；支持收藏栏、搜索（含中文拼音）、文件夹浏览与批量管理，并提供完整管理页与设置页。
+Linkscape 是一款面向 Chrome 的书签管理扩展。它把书签面板放在当前网页边缘：鼠标靠近指定边缘和高度范围时，面板自动展开；移出面板后自动收起。
 
-## 功能
+Linkscape 的核心体验是「快速找到、快速打开、快速整理」，同时保留 Chrome 原生书签数据，不引入独立的云端书签体系。
 
-- **边缘悬停展开**：默认左侧 14px 触发区，可切换左右停靠；触发高度范围按视口百分比配置（含预设），范围外悬停不弹出
-- **面板尺寸与缩放**：设置面板宽度和高度（默认全高度）；通过 Chrome 标签页缩放因子反向补偿，面板不会随网页缩放改变物理尺寸
-- **Shadow DOM 隔离**：面板样式与网页完全隔离，增强 `backdrop-filter` 毛玻璃材质、较高不透明度 + 深色模式适配 + 无玻璃支持时的实色回退
-- **书签树 + 收藏栏**：收藏栏保存在 `chrome.storage.local`（书签 id 列表），不改变 Chrome 原生书签层级；书签被外部删除时自动清理失效项
-- **列表显示**：书签每行只显示名称和真实网站图标；Chrome favicon 服务不可用时回退到网站 `/favicon.ico`
-- **搜索**：标题 / 网址 / 域名 / 文件夹路径 + 中文拼音全拼（开发文档 → kaifawendang）与首字母（→ kfwd），120ms 防抖、结果高亮、键盘导航
-- **管理操作**：新建书签 / 文件夹、重命名、移动、复制、删除（含确认），多选批量操作；删除后 8 秒内可撤销；禁止把文件夹移入自身或后代、保护特殊根节点
-- **后台打开**：点击书签在后台新建标签页（`active: false`），不抢占当前页面
-- **完整管理页**：左侧文件夹树 + 右侧列表 + 全局搜索 + 批量工具栏
-- **设置页**：停靠方向、触发高度范围（预设 + 自定义 + 校验）、排除规则（域名 / 网址前缀 / 通配符），即时生效
-- **受保护页面**：`chrome://`、应用商店等页面无法注入面板，扩展弹窗提供完整管理页备用入口
-- **快捷键**：`Alt+Shift+L` 手动打开 / 收起面板；面板内 `Ctrl+F` 聚焦搜索、`Esc` 收起
+## 功能概览
 
-## 开发
+- **边缘悬停面板**：默认靠近页面左侧展开，也可以切换到右侧。
+- **触发范围可配置**：可设置边缘触发宽度、页面高度范围、展开延迟和收起延迟；鼠标超出高度范围时不会弹出。
+- **固定显示比例**：面板会根据 Chrome 标签页缩放因子进行补偿，不随网页缩放而变大或变小。
+- **液态玻璃界面**：支持半透明、毛玻璃、深色模式和不支持 `backdrop-filter` 时的实色回退。
+- **书签树和收藏栏**：书签树直接读取 Chrome 书签；收藏栏单独保存常用书签，不改变原有书签层级。
+- **清晰的列表显示**：每个书签一行，只显示名称和网站图标，不显示 URL。
+- **真实网站图标**：优先使用 Chrome favicon；加载失败时尝试网站 `/favicon.ico`，最终使用内置矢量风格默认图标，并缓存失败结果避免每次重复加载。
+- **中文拼音搜索**：支持标题、网址、域名和文件夹路径搜索，同时支持中文全拼和首字母，例如“开发文档”可以搜索 `kaifawendang` 或 `kfwd`。
+- **图标拖拽排序**：按住文件夹图标、网站图标或默认书签图标拖动，可在同级项目之间排序，也可以拖入文件夹。
+- **后台打开**：点击书签后在 Chrome 后台新建标签页，不抢占当前页面。
+- **完整管理页**：支持浏览文件夹树、新建书签、新建文件夹、重命名、移动、复制、删除和多选批量操作。
+- **URL 有效性检测**：可检测选中书签或全部书签 URL，将无效书签标记出来，并快速筛选后批量复制、移动或删除。
+- **设置页**：可设置面板方向、大小、触发范围、延迟和排除规则。
+- **快捷键**：默认使用 `Alt+Shift+L` 手动打开或收起当前页面的面板；面板内支持 `Ctrl+F` 聚焦搜索和 `Esc` 收起。
+
+## 安装和加载
+
+### 直接加载当前构建
+
+项目根目录本身就是 Chrome 的加载目录，不需要选择 `dist/`：
+
+1. 打开 `chrome://extensions`。
+2. 开启右上角的「开发者模式」。
+3. 点击「加载已解压的扩展程序」。
+4. 选择本项目根目录：`Linkscape/`。
+
+根目录中的 `manifest.json`、`assets/`、`icons/`、`manager.html`、`options.html` 和 `popup.html` 是可直接运行的扩展文件。
+
+### 从源码重新构建
 
 ```bash
-npm install          # 安装依赖（若全局 npm 缓存损坏，可加 --cache ./.npm-cache）
-npm run icons        # 生成 public/icons 下的图标 PNG
-npm run build        # 构建到 dist/
-npm run typecheck    # TypeScript 类型检查
-npm test             # 单元测试（vitest：拼音搜索 / URL 规则 / 树工具）
+npm install
+npm run build
 ```
 
-## 加载扩展（开发模式）
+构建完成后，运行时文件会直接生成或更新在项目根目录。修改源码后重新执行 `npm run build`，再回到 `chrome://extensions` 点击 Linkscape 的「重新加载」即可。
 
-1. 执行 `npm run build`
-2. 打开 `chrome://extensions`，开启右上角「开发者模式」
-3. 点击「加载已解压的扩展程序」，选择本目录下的 `dist/` 文件夹
-4. 打开任意普通网页，把鼠标移到页面左边缘（默认）即可看到面板
+## 使用方式
 
-也可以直接选择项目根目录 `Linkscape/` 加载。根目录的 `manifest.json` 是开发加载入口，实际脚本和页面仍来自最新构建的 `dist/`；每次修改源码后先执行 `npm run build`，再在 Chrome 中点击「重新加载」。
+### 侧面板
+
+在普通网页中，将鼠标移动到页面边缘的触发区域，面板会在设置的高度范围内展开。面板展开后，只要鼠标仍在面板范围内就会保持打开；鼠标移出面板后自动收起。
+
+- 点击三角形展开或收起文件夹。
+- 点击书签，在后台打开对应网页。
+- 点击文件夹或书签图标并拖动，调整顺序或移动到文件夹。
+- 使用搜索框查找书签，支持拼音全拼和首字母。
+- 右上角第一个按钮进入完整管理页，第二个齿轮按钮进入设置页，第三个按钮关闭面板。
+
+### 完整管理页
+
+完整管理页适合集中整理大量书签：
+
+- 左侧浏览文件夹树，右侧查看当前文件夹内容。
+- 支持全局搜索、新建书签、新建文件夹和重命名。
+- 在全选按钮左侧进行多选，并批量复制、移动或删除。
+- 选择书签后测试 URL，或者测试全部书签。
+- 开启「无效」筛选，快速查看检测失败的书签并批量处理。
+- 双击书签可在后台打开。
+
+### 设置页
+
+设置页支持以下选项：
+
+- 面板靠左或靠右展开。
+- 面板宽度和高度；高度默认占据整个视口。
+- 鼠标触发高度范围，可使用预设或自定义视口百分比。
+- 边缘触发宽度、打开延迟和收起延迟。
+- 按域名、URL 前缀或通配符排除页面。
+
+## 开发命令
+
+```bash
+npm install          # 安装依赖
+npm run icons        # 重新生成图标源文件
+npm run build        # 构建到项目根目录，供 Chrome 直接加载
+npm run typecheck    # TypeScript 类型检查
+npm test             # 运行 Vitest 单元测试
+npm run test:watch   # 监听模式运行测试
+```
+
+构建脚本会先在隐藏的 `.build/` 目录中生成临时产物，再整理到项目根目录，完成后自动清理临时目录。项目不再使用 `dist/` 作为 Chrome 加载目录。
 
 ## 项目结构
 
 ```text
 Linkscape/
+├── manifest.json             # Chrome Manifest V3 运行时清单
+├── assets/                   # 构建后的脚本和样式，Chrome 运行时使用
+├── icons/                    # 构建后的扩展图标
+├── manager.html              # 完整管理页运行入口
+├── options.html              # 设置页运行入口
+├── popup.html                # 扩展弹窗运行入口
 ├── public/
-│   ├── manifest.json          # Manifest V3
-│   └── icons/                 # 生成的图标
+│   ├── manifest.json         # 清单源文件
+│   └── icons/                # 图标源文件
 ├── scripts/
-│   ├── build.mjs              # 两轮构建：内容脚本(IIFE) + 页面/SW(ESM)
-│   └── generate-icons.mjs     # 纯 Node PNG 图标生成
+│   ├── build.mjs             # 构建并整理根目录运行文件
+│   └── generate-icons.mjs    # 生成图标
 ├── src/
-│   ├── background/service-worker.ts   # 书签 API、收藏栏、消息路由、撤销、广播
-│   ├── content/
-│   │   ├── content.ts                 # 内容脚本入口
-│   │   └── edge-host.ts               # 边缘触发区 + Shadow DOM + 生命周期
-│   ├── panel/                          # 悬浮面板 React 应用
-│   │   ├── BookmarkPanel.tsx
-│   │   ├── panel-state.ts              # 数据层（SW 通信 + 广播订阅）
-│   │   ├── panel-mount.tsx             # 挂载进 Shadow DOM
-│   │   ├── use-undo.ts                 # 删除撤销
-│   │   └── components/                 # 树 / 收藏 / 搜索 / 菜单 / 对话框
-│   ├── manager/                        # 完整管理页
-│   ├── options/                        # 设置页
-│   ├── popup/                          # 扩展弹窗
-│   ├── shared/
-│   │   ├── messages.ts                 # 消息协议
-│   │   ├── bookmark-types.ts
-│   │   ├── settings.ts
-│   │   ├── search-index.ts             # 拼音搜索索引
-│   │   ├── url-matcher.ts              # 域名 / URL / 通配符匹配
-│   │   └── tree-utils.ts               # 纯函数树操作（可单测）
-│   └── styles/
-│       ├── panel.css                   # Shadow DOM 面板样式
-│       └── glass.css                   # 扩展页面共享样式
-├── manager.html / options.html / popup.html
-└── DEVELOPMENT_PLAN.md
+│   ├── background/           # Service Worker、书签 API 和消息路由
+│   ├── content/              # 网页注入、边缘触发区和 Shadow DOM
+│   ├── panel/                # 侧面板 React 应用
+│   ├── manager/              # 完整管理页
+│   ├── options/              # 设置页
+│   ├── popup/                # 扩展弹窗
+│   ├── shared/               # 消息、设置、搜索、树操作等公共逻辑
+│   └── styles/               # 侧面板和管理页面样式
+├── package.json
+├── tsconfig.json
+└── vitest.config.ts
 ```
 
-## 技术要点
+`src/`、`public/` 和 `scripts/` 用于开发；根目录的构建文件用于 Chrome 加载。`node_modules/`、`.build/`、`dist/` 和本地开发文档不会作为扩展运行文件提交。
 
-- Chrome Manifest V3、TypeScript、React 18、Vite 5
-- 内容脚本构建为单个 IIFE 文件（`assets/content.js`），Service Worker 为 ES Module（`assets/background.js`）
-- 面板与 SW 通过 `chrome.runtime.sendMessage` 通信（书签 API 仅在 SW 中调用）
-- 书签变化（`onCreated/onChanged/onMoved/onRemoved`）广播到所有标签页自动刷新
-- 权限最小化：`bookmarks`、`storage`、`tabs`、`favicon`
+## 技术栈和权限
 
-## 已知边界
+- Chrome Manifest V3
+- TypeScript、React 18、Vite 5
+- `pinyin-pro` 中文拼音搜索
+- Shadow DOM 与 CSS `backdrop-filter` 液态玻璃效果
+- `chrome.bookmarks` 管理书签
+- `chrome.storage.local` 保存设置和收藏栏
+- `chrome.tabs` 在后台打开书签和读取缩放信息
+- `chrome.favicon` 获取网站图标
 
-- 拖拽排序作为增强功能暂未实现（计划中说明可放到下一版本）
-- 千级书签的虚拟列表暂以「搜索结果上限 200」替代，索引已做缓存
-- 撤销仅在删除后 8 秒内、且为同一会话内最近一次删除快照
+扩展需要访问普通 `http` / `https` 网页，以便注入边缘触发区和侧面板。
+
+## 使用边界
+
+Chrome 会禁止扩展向以下页面注入内容脚本，因此侧面板无法在这些页面自动展开：
+
+- `chrome://` 页面，包括 Chrome 原生新标签页
+- Chrome 网上应用店页面
+- 扩展管理页、开发者工具等受保护页面
+
+在这些页面中，可以通过扩展弹窗进入完整管理页或设置页。当前版本没有覆盖 Chrome 原生新标签页；如果需要新标签页体验，需要后续增加自定义新标签页覆盖方案。
+
+## 常见问题
+
+### Chrome 提示“清单文件缺失或不可读取”
+
+通常是加载目录选错。请确认选择的是包含 `manifest.json` 的 `Linkscape/` 根目录，而不是父目录、`src/` 或旧的 `dist/` 目录。若根目录缺少运行文件，先执行：
+
+```bash
+npm run build
+```
+
+然后在扩展页面重新加载。
+
+### 修改后页面没有更新
+
+先执行 `npm run build`，再在 `chrome://extensions` 点击「重新加载」。已经打开的网页可能还保留旧的内容脚本，必要时刷新网页。
