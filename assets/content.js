@@ -138,6 +138,8 @@ Error generating stack: `+l.message+`
   border: 1px solid var(--ls-border);
   box-shadow: var(--ls-shadow);
   overflow: hidden;
+  /* 面板内滚轮不继续传递给网页。 */
+  overscroll-behavior: contain;
   transition: transform 0.3s cubic-bezier(0.32, 0.72, 0.22, 1),
     opacity 0.22s ease;
   will-change: transform;
@@ -347,6 +349,8 @@ Error generating stack: `+l.message+`
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  /* 到达列表顶部或底部时，阻止滚动链路穿透到网页。 */
+  overscroll-behavior: contain;
   padding: 0 8px 10px;
 }
 .ls-list::-webkit-scrollbar {
@@ -893,6 +897,7 @@ Error generating stack: `+l.message+`
 .ls-picktree {
   max-height: 220px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--ls-border);
   border-radius: 10px;
   padding: 4px;
