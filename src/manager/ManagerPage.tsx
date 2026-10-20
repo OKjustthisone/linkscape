@@ -11,6 +11,7 @@ import {
 import { usePanelData } from '../panel/panel-state'
 import { useUndo } from '../panel/use-undo'
 import { sendMessageToBackground } from '../shared/messages'
+import { normalizeTodoPriority } from '../shared/todo-types'
 import { SearchView } from '../panel/components/SearchView'
 import { RowMenu } from '../panel/components/RowMenu'
 import { Dialogs } from '../panel/components/Dialogs'
@@ -36,7 +37,7 @@ const ROOT_TITLES: Record<string, string> = {
 
 export function ManagerPage(): JSX.Element {
   const data = usePanelData()
-  const { tree, actions, paths, counts, error, loading } = data
+  const { tree, actions, paths, counts, error, loading, todoActions } = data
 
   const [currentFolderId, setCurrentFolderId] = useState<string>(BOOKMARKS_BAR_ID)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
@@ -187,6 +188,9 @@ export function ManagerPage(): JSX.Element {
         case 'new-folder':
           setDialog({ kind: 'new-folder', parentId: node.id })
           break
+        case 'add-todo':
+          setDialog({ kind: 'add-todo', node })
+          break
       }
     },
     [actions]
@@ -216,9 +220,16 @@ export function ManagerPage(): JSX.Element {
           setSelection(new Set())
           await afterDelete()
           break
+        case 'add-todo':
+          await todoActions.addTodo({
+            title: d.node.title,
+            url: d.node.url ?? '',
+            priority: normalizeTodoPriority(values.priority),
+          })
+          break
       }
     },
-    [actions, afterDelete]
+    [actions, afterDelete, todoActions]
   )
 
   const toggleSelectAll = (): void => {

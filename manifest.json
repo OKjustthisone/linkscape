@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Linkscape",
   "version": "0.1.0",
-  "description": "液态玻璃书签面板：鼠标靠近页面边缘自动展开，支持搜索（含拼音）、收藏栏与完整书签管理。",
+  "description": "液态玻璃书签面板：鼠标靠近页面边缘自动展开，支持搜索（含拼音）、收藏栏、待办清单与完整书签管理。",
   "minimum_chrome_version": "110",
   "permissions": ["bookmarks", "storage", "tabs", "favicon"],
   "host_permissions": ["http://*/*", "https://*/*"],

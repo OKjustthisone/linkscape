@@ -11,6 +11,7 @@
 
 import type { BookmarkTree } from './bookmark-types'
 import type { Settings } from './settings'
+import type { TodoItem, TodoPatch, TodoPriority } from './todo-types'
 import type { UrlStatusMap } from './url-status'
 
 /** 内容脚本 / 扩展页面 -> SW 的请求。 */
@@ -34,6 +35,12 @@ export type BackgroundRequest =
   | { type: 'GET_TAB_ZOOM' }
   | { type: 'GET_URL_STATUSES' }
   | { type: 'TEST_BOOKMARK_URLS'; ids?: string[] }
+  | { type: 'ADD_PAGE_TO_FAVORITES'; title: string; url: string }
+  | { type: 'GET_TODOS' }
+  | { type: 'ADD_TODO'; title: string; url: string; priority: TodoPriority }
+  | { type: 'UPDATE_TODO'; id: string; patch: TodoPatch }
+  | { type: 'REMOVE_TODO'; id: string }
+  | { type: 'CLEAR_DONE_TODOS' }
 
 export type BackgroundResponse<T = unknown> =
   | { ok: true; data: T }
@@ -43,15 +50,18 @@ export type BackgroundResponse<T = unknown> =
 export type ExtensionToContentMessage =
   | { type: 'BOOKMARKS_CHANGED' }
   | { type: 'SETTINGS_CHANGED' }
+  | { type: 'TODOS_CHANGED' }
   | { type: 'PANEL_TOGGLE' }
   | { type: 'PANEL_OPEN' }
   | { type: 'PANEL_CLOSE' }
+  | { type: 'PANEL_TODO' }
   | { type: 'ZOOM_CHANGED'; zoomFactor: number }
 
-/** SW 下发给扩展页面（manager/options）的广播。 */
+/** SW 下发给扩展页面（manager/options/popup）的广播。 */
 export type ExtensionToPageMessage =
   | { type: 'BOOKMARKS_CHANGED' }
   | { type: 'SETTINGS_CHANGED' }
+  | { type: 'TODOS_CHANGED' }
 
 export interface TabInfo {
   /** 当前活动标签页（弹窗场景下即用户正在浏览的页面）。 */
@@ -89,6 +99,11 @@ export interface RemovedSnapshot {
 }
 
 export type FavoritesResponse = { favorites: string[] }
+
+/** 待办列表响应。 */
+export interface TodosResponse {
+  todos: TodoItem[]
+}
 
 /** 带类型封装：内容脚本 / 页面 向 SW 发请求。 */
 export function sendMessageToBackground<T = unknown>(

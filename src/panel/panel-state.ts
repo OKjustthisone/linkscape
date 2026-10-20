@@ -11,6 +11,7 @@ import {
   DEFAULT_SETTINGS,
   type Settings,
 } from '../shared/settings'
+import type { TodoItem, TodoPatch, TodoPriority } from '../shared/todo-types'
 import { computePaths, countNodes } from '../shared/tree-utils'
 import { SearchIndex, type SearchResult } from '../shared/search-index'
 
@@ -26,6 +27,14 @@ export interface BookmarkActions {
   updateSettings: (patch: Partial<Settings>) => Promise<void>
 }
 
+/** To do 待办操作。 */
+export interface TodoActions {
+  addTodo: (input: { title: string; url: string; priority: TodoPriority }) => Promise<void>
+  updateTodo: (id: string, patch: TodoPatch) => Promise<void>
+  removeTodo: (id: string) => Promise<void>
+  clearDoneTodos: () => Promise<void>
+}
+
 export interface PanelData {
   tree: BookmarkTree
   favorites: string[]
@@ -38,6 +47,9 @@ export interface PanelData {
   /** 搜索（内部带缓存）。 */
   search: (query: string) => SearchResult[]
   actions: BookmarkActions
+  /** 待办列表。 */
+  todos: TodoItem[]
+  todoActions: TodoActions
   refresh: () => Promise<void>
 }
 
@@ -45,8 +57,18 @@ export function usePanelData(): PanelData {
   const [tree, setTree] = useState<BookmarkTree>([])
   const [favorites, setFavorites] = useState<string[]>([])
   const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS })
+  const [todos, setTodos] = useState<TodoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const refreshTodos = useCallback(async (): Promise<void> => {
+    try {
+      const data = await sendMessageToBackground<{ todos: TodoItem[] }>({ type: 'GET_TODOS' })
+      setTodos(data.todos)
+    } catch {
+      /* 待办读取失败不影响书签面板 */
+    }
+  }, [])
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
@@ -64,21 +86,23 @@ export function usePanelData(): PanelData {
     } finally {
       setLoading(false)
     }
-  }, [])
+    await refreshTodos()
+  }, [refreshTodos])
 
   useEffect(() => {
     void refresh()
   }, [refresh])
 
-  // SW 广播：书签 / 设置变化
+  // SW 广播：书签 / 设置 / 待办变化
   useEffect(() => {
     const onMessage = (msg: ExtensionToContentMessage): void => {
       if (msg.type === 'BOOKMARKS_CHANGED') void refresh()
       else if (msg.type === 'SETTINGS_CHANGED') void refresh()
+      else if (msg.type === 'TODOS_CHANGED') void refreshTodos()
     }
     chrome.runtime.onMessage.addListener(onMessage)
     return () => chrome.runtime.onMessage.removeListener(onMessage)
-  }, [refresh])
+  }, [refresh, refreshTodos])
 
   const run = useCallback(
     async <T,>(p: Promise<T>): Promise<void> => {
@@ -126,6 +150,48 @@ export function usePanelData(): PanelData {
         ),
     }),
     [run]
+  )
+
+  const runTodo = useCallback(async (p: Promise<{ todos: TodoItem[] }>): Promise<void> => {
+    setError(null)
+    try {
+      const data = await p
+      setTodos(data.todos)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      throw e
+    }
+  }, [])
+
+  const todoActions: TodoActions = useMemo(
+    () => ({
+      addTodo: (input) =>
+        runTodo(
+          sendMessageToBackground<{ todos: TodoItem[] }>({
+            type: 'ADD_TODO',
+            title: input.title,
+            url: input.url,
+            priority: input.priority,
+          })
+        ),
+      updateTodo: (id, patch) =>
+        runTodo(
+          sendMessageToBackground<{ todos: TodoItem[] }>({
+            type: 'UPDATE_TODO',
+            id,
+            patch,
+          })
+        ),
+      removeTodo: (id) =>
+        runTodo(
+          sendMessageToBackground<{ todos: TodoItem[] }>({ type: 'REMOVE_TODO', id })
+        ),
+      clearDoneTodos: () =>
+        runTodo(
+          sendMessageToBackground<{ todos: TodoItem[] }>({ type: 'CLEAR_DONE_TODOS' })
+        ),
+    }),
+    [runTodo]
   )
 
   const paths = useMemo(() => computePaths(tree), [tree])
@@ -187,6 +253,8 @@ export function usePanelData(): PanelData {
     searchIndex,
     search,
     actions,
+    todos,
+    todoActions,
     refresh,
   }
 }

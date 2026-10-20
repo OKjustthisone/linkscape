@@ -5,11 +5,14 @@ import type { BookmarkNode } from '../shared/bookmark-types'
 import { isSpecialRootId } from '../shared/bookmark-types'
 import { indexById } from '../shared/tree-utils'
 import { sendMessageToBackground } from '../shared/messages'
+import type { ExtensionToContentMessage } from '../shared/messages'
+import { normalizeTodoPriority, type TodoItem } from '../shared/todo-types'
 import { usePanelData } from './panel-state'
 import { useUndo } from './use-undo'
 import { TreeView } from './components/TreeView'
 import { FavoritesView } from './components/FavoritesView'
 import { SearchView } from './components/SearchView'
+import { TodoView } from './components/TodoView'
 import { RowMenu } from './components/RowMenu'
 import { Dialogs } from './components/Dialogs'
 import { CloseIcon, ExternalIcon, GearIcon, LogoMark, SearchIcon } from './components/Icons'
@@ -24,6 +27,8 @@ export interface BookmarkPanelProps {
 
 const SEARCH_DEBOUNCE_MS = 120
 
+type PanelView = 'tree' | 'favorites' | 'todo'
+
 function getDropPosition(
   node: BookmarkNode,
   event: React.DragEvent<HTMLDivElement>
@@ -37,11 +42,11 @@ function getDropPosition(
 
 export function BookmarkPanel({ open, onClose }: BookmarkPanelProps): JSX.Element {
   const data = usePanelData()
-  const { actions, tree, favorites, counts, error, loading } = data
+  const { actions, tree, favorites, counts, error, loading, todos, todoActions } = data
 
   const [query, setQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
-  const [view, setView] = useState<'favorites' | 'tree'>('tree')
+  const [view, setView] = useState<PanelView>('tree')
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [menu, setMenu] = useState<MenuAnchor | null>(null)
   const [dialog, setDialog] = useState<DialogState | null>(null)
@@ -61,6 +66,24 @@ export function BookmarkPanel({ open, onClose }: BookmarkPanelProps): JSX.Elemen
 
   const favoritesSet = useMemo(() => new Set(favorites), [favorites])
   const byId = useMemo(() => indexById(tree), [tree])
+
+  // 弹窗「查看待办」：切换到 To do 标签页
+  useEffect(() => {
+    const onMessage = (msg: ExtensionToContentMessage): void => {
+      if (msg.type === 'PANEL_TODO') {
+        setQuery('')
+        setView('todo')
+      }
+    }
+    chrome.runtime.onMessage.addListener(onMessage)
+    return () => chrome.runtime.onMessage.removeListener(onMessage)
+  }, [])
+
+  // 切换标签页时清空搜索，避免搜索结果遮住当前视图
+  const switchView = useCallback((next: PanelView): void => {
+    setQuery('')
+    setView(next)
+  }, [])
 
   // 树视图默认展开三个特殊根
   useEffect(() => {
@@ -149,6 +172,9 @@ export function BookmarkPanel({ open, onClose }: BookmarkPanelProps): JSX.Elemen
         case 'new-folder':
           setDialog({ kind: 'new-folder', parentId: node.id })
           break
+        case 'add-todo':
+          setDialog({ kind: 'add-todo', node })
+          break
       }
     },
     [actions]
@@ -157,6 +183,13 @@ export function BookmarkPanel({ open, onClose }: BookmarkPanelProps): JSX.Elemen
   const handleOpen = useCallback(
     (node: BookmarkNode): void => {
       if (node.url) void actions.openInBackground(node.url)
+    },
+    [actions]
+  )
+
+  const handleTodoOpen = useCallback(
+    (todo: TodoItem): void => {
+      if (todo.url) void actions.openInBackground(todo.url)
     },
     [actions]
   )
@@ -183,9 +216,17 @@ export function BookmarkPanel({ open, onClose }: BookmarkPanelProps): JSX.Elemen
           await actions.removeNodes(d.ids)
           await afterDelete()
           break
+        case 'add-todo':
+          await todoActions.addTodo({
+            title: d.node.title,
+            url: d.node.url ?? '',
+            priority: normalizeTodoPriority(values.priority),
+          })
+          setView('todo')
+          break
       }
     },
-    [actions, afterDelete]
+    [actions, afterDelete, todoActions]
   )
 
   const openExtensionPage = (page: 'manager' | 'options'): void => {
@@ -324,15 +365,21 @@ export function BookmarkPanel({ open, onClose }: BookmarkPanelProps): JSX.Elemen
         <div className="ls-tabs">
           <button
             className={`ls-tab ${view === 'tree' ? 'ls-active' : ''}`}
-            onClick={() => setView('tree')}
+            onClick={() => switchView('tree')}
           >
             全部书签
           </button>
           <button
             className={`ls-tab ${view === 'favorites' ? 'ls-active' : ''}`}
-            onClick={() => setView('favorites')}
+            onClick={() => switchView('favorites')}
           >
             收藏栏 {favorites.length > 0 ? `(${favorites.length})` : ''}
+          </button>
+          <button
+            className={`ls-tab ${view === 'todo' ? 'ls-active' : ''}`}
+            onClick={() => switchView('todo')}
+          >
+            To do {todos.length > 0 ? `(${todos.length})` : ''}
           </button>
         </div>
       )}
@@ -368,6 +415,18 @@ export function BookmarkPanel({ open, onClose }: BookmarkPanelProps): JSX.Elemen
             onToggleFavorite={(n) => void actions.toggleFavorite(n.id)}
             onMore={(n, a) => setMenu({ node: n, x: a.x, y: a.y })}
             onCheck={() => undefined}
+          />
+        ) : view === 'todo' ? (
+          <TodoView
+            todos={todos}
+            onOpen={handleTodoOpen}
+            onToggleDone={(todo) =>
+              void todoActions.updateTodo(todo.id, { done: !todo.done })
+            }
+            onSetPriority={(todo, priority) =>
+              void todoActions.updateTodo(todo.id, { priority })
+            }
+            onRemove={(todo) => void todoActions.removeTodo(todo.id)}
           />
         ) : (
           <TreeView

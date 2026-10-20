@@ -56,6 +56,127 @@ body {
   color: var(--ls-accent);
 }
 
+/* ---------- 当前页面卡片 ---------- */
+.pop-page-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  background: var(--ls-surface-solid);
+  border: 1px solid var(--ls-border);
+}
+.pop-favicon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 5px;
+  object-fit: contain;
+}
+.pop-favicon-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ls-text-faint);
+  background: var(--ls-active);
+}
+.pop-page-info {
+  min-width: 0;
+  flex: 1;
+}
+.pop-page-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ls-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pop-page-host {
+  font-size: 11px;
+  color: var(--ls-text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- To do 优先级选择 ---------- */
+.pop-todo {
+  padding: 8px 10px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-surface-solid);
+}
+.pop-todo-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ls-text-dim);
+  margin-bottom: 8px;
+}
+.pop-todo-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ls-text-faint);
+}
+.pop-priority-row {
+  display: flex;
+  gap: 6px;
+}
+.pop-priority {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 4px;
+  border-radius: 9px;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, background 0.15s ease;
+}
+.pop-priority:hover:not(:disabled) {
+  background: var(--ls-hover);
+  filter: brightness(1.02);
+}
+.pop-priority:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.pop-priority-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+
+/* ---------- 状态提示 ---------- */
+.pop-status {
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  text-align: center;
+}
+.pop-status.ok {
+  color: #1a7f4b;
+  background: rgba(34, 160, 107, 0.12);
+  border: 1px solid rgba(34, 160, 107, 0.28);
+}
+.pop-status.error {
+  color: var(--ls-danger);
+  background: rgba(229, 72, 77, 0.12);
+  border: 1px solid rgba(229, 72, 77, 0.3);
+}
+
 .pop-divider {
   height: 1px;
   background: var(--ls-border);

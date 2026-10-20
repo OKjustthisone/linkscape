@@ -355,6 +355,11 @@ class EdgeHostImpl implements EdgeHost {
             this.close()
             sendResponse({ ok: true })
             break
+          case 'PANEL_TODO':
+            // 弹窗「查看待办」：展开面板（面板内部会切到 To do 标签页）
+            if (this.enabled) this.open()
+            sendResponse({ ok: true })
+            break
           case 'ZOOM_CHANGED':
             this.zoomFactor = msg.zoomFactor
             this.applyZoom()

@@ -26,7 +26,7 @@ interface FaviconProps {
   onDragEnd?: () => void
 }
 
-function Favicon({ url, draggable = false, onDragStart, onDragEnd }: FaviconProps): JSX.Element {
+export function Favicon({ url, draggable = false, onDragStart, onDragEnd }: FaviconProps): JSX.Element {
   const cacheKey = url?.trim() ?? ''
   const [failed, setFailed] = useState(() => !cacheKey || unavailableFaviconUrls.has(cacheKey))
   const [sourceIndex, setSourceIndex] = useState(0)

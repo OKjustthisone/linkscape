@@ -15,6 +15,7 @@ import { isFolder, isSpecialRootId } from '../shared/bookmark-types'
 import type {
   BackgroundRequest,
   ExtensionToContentMessage,
+  ExtensionToPageMessage,
   RemovedSnapshot,
   TabInfo,
 } from '../shared/messages'
@@ -25,6 +26,15 @@ import {
   mergeSettings,
   type Settings,
 } from '../shared/settings'
+import {
+  createTodoId,
+  normalizeTodoPriority,
+  sanitizeTodoItems,
+  TODO_STORAGE_KEY,
+  type TodoItem,
+  type TodoPatch,
+  type TodoPriority,
+} from '../shared/todo-types'
 import { checkMove, indexById } from '../shared/tree-utils'
 import { isProtectedUrl } from '../shared/url-matcher'
 import { getExtensionPageUrl } from '../shared/extension-pages'
@@ -215,6 +225,133 @@ async function toggleFavorite(id: string): Promise<string[]> {
 }
 
 /* ------------------------------------------------------------------ */
+/* To do 待办                                                          */
+/* ------------------------------------------------------------------ */
+
+async function readTodos(): Promise<TodoItem[]> {
+  const { [TODO_STORAGE_KEY]: todos } = await chrome.storage.local.get(TODO_STORAGE_KEY)
+  return sanitizeTodoItems(todos)
+}
+
+async function saveTodos(todos: TodoItem[]): Promise<void> {
+  await chrome.storage.local.set({ [TODO_STORAGE_KEY]: todos })
+}
+
+async function addTodo(
+  title: string,
+  url: string,
+  priority: TodoPriority
+): Promise<TodoItem[]> {
+  if (!url.trim()) throw new Error('网址不能为空')
+  const todos = await readTodos()
+  const item: TodoItem = {
+    id: createTodoId(),
+    title: title.trim() || url,
+    url: url.trim(),
+    priority: normalizeTodoPriority(priority),
+    done: false,
+    createdAt: Date.now(),
+  }
+  const next = [item, ...todos]
+  await saveTodos(next)
+  notifyTodosChanged()
+  return next
+}
+
+async function updateTodo(id: string, patch: TodoPatch): Promise<TodoItem[]> {
+  const todos = await readTodos()
+  const next = todos.map((todo) => {
+    if (todo.id !== id) return todo
+    return {
+      ...todo,
+      ...(patch.title !== undefined ? { title: patch.title.trim() || todo.title } : {}),
+      ...(patch.url !== undefined ? { url: patch.url.trim() || todo.url } : {}),
+      ...(patch.priority !== undefined
+        ? { priority: normalizeTodoPriority(patch.priority, todo.priority) }
+        : {}),
+      ...(patch.done !== undefined ? { done: patch.done } : {}),
+    }
+  })
+  if (next.every((todo, i) => todo === todos[i])) return todos
+  await saveTodos(next)
+  notifyTodosChanged()
+  return next
+}
+
+async function removeTodo(id: string): Promise<TodoItem[]> {
+  const todos = await readTodos()
+  const next = todos.filter((todo) => todo.id !== id)
+  if (next.length === todos.length) return todos
+  await saveTodos(next)
+  notifyTodosChanged()
+  return next
+}
+
+async function clearDoneTodos(): Promise<TodoItem[]> {
+  const todos = await readTodos()
+  const next = todos.filter((todo) => !todo.done)
+  if (next.length === todos.length) return todos
+  await saveTodos(next)
+  notifyTodosChanged()
+  return next
+}
+
+/* ------------------------------------------------------------------ */
+/* 当前页面加入收藏夹                                                  */
+/* ------------------------------------------------------------------ */
+
+/** 书签树中第一个 URL 相同的书签。 */
+function findBookmarkByUrl(nodes: BookmarkTree, url: string): BookmarkNode | undefined {
+  for (const node of nodes) {
+    if (node.url === url) return node
+    if (node.children) {
+      const found = findBookmarkByUrl(node.children, url)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
+/** 收藏落点：优先 Chrome 的「书签栏」，否则用第一个根目录。 */
+function resolveFavoritesParentId(tree: BookmarkTree): string {
+  const roots = tree[0]?.children ?? []
+  const bar = roots.find((root) => /bookmarks bar|书签栏/i.test(root.title ?? ''))
+  return bar?.id ?? roots[0]?.id ?? '1'
+}
+
+/**
+ * 把当前页面加入收藏：
+ * 1. 书签树中已有同地址书签时直接复用，避免重复；
+ * 2. 否则在「书签栏」新建书签；
+ * 3. 最后加入 Linkscape 的收藏栏（面板内「收藏栏」标签页可见）。
+ */
+async function addPageToFavorites(
+  title: string,
+  url: string
+): Promise<{ id: string; created: boolean }> {
+  if (!/^https?:\/\//i.test(url)) throw new Error('当前页面不是可收藏的网页')
+  const tree = await getTree()
+  const existing = findBookmarkByUrl(tree, url)
+  let id = existing?.id
+  let created = false
+  if (!id) {
+    const parentId = resolveFavoritesParentId(tree)
+    const node = await chrome.bookmarks.create({
+      parentId,
+      title: title.trim() || url,
+      url,
+    })
+    id = node.id
+    created = true
+  }
+  const favorites = await readFavorites()
+  if (!favorites.includes(id)) {
+    await saveFavorites([...favorites, id])
+  }
+  return { id, created }
+}
+
+/* ------------------------------------------------------------------ */
 /* URL 可用性检测                                                      */
 /* ------------------------------------------------------------------ */
 
@@ -342,6 +479,16 @@ function notifyBookmarksChanged(): void {
   void broadcastToTabs({ type: 'BOOKMARKS_CHANGED' })
 }
 
+/** 待办变化：同时通知内容脚本（面板）与扩展页面（管理页 / 弹窗）。 */
+function notifyTodosChanged(): void {
+  void broadcastToTabs({ type: 'TODOS_CHANGED' })
+  void chrome.runtime
+    .sendMessage({ type: 'TODOS_CHANGED' } satisfies ExtensionToPageMessage)
+    .catch(() => {
+      /* 没有扩展页面在监听时忽略 */
+    })
+}
+
 /* ------------------------------------------------------------------ */
 /* 消息路由                                                            */
 /* ------------------------------------------------------------------ */
@@ -445,6 +592,24 @@ async function handleRequest(
     case 'TEST_BOOKMARK_URLS':
       return await testBookmarkUrls(req.ids)
 
+    case 'ADD_PAGE_TO_FAVORITES':
+      return await addPageToFavorites(req.title, req.url)
+
+    case 'GET_TODOS':
+      return { todos: await readTodos() }
+
+    case 'ADD_TODO':
+      return { todos: await addTodo(req.title, req.url, req.priority) }
+
+    case 'UPDATE_TODO':
+      return { todos: await updateTodo(req.id, req.patch) }
+
+    case 'REMOVE_TODO':
+      return { todos: await removeTodo(req.id) }
+
+    case 'CLEAR_DONE_TODOS':
+      return { todos: await clearDoneTodos() }
+
     default:
       throw new Error(`未知消息类型: ${(req as { type: string }).type}`)
   }
@@ -452,6 +617,8 @@ async function handleRequest(
 
 chrome.runtime.onMessage.addListener(
   (req: BackgroundRequest, sender, sendResponse) => {
+    // SW 自己发出的广播（BOOKMARKS_CHANGED / TODOS_CHANGED 等）不是请求，直接忽略。
+    if (!req || typeof req.type !== 'string' || req.type.endsWith('_CHANGED')) return
     handleRequest(req, sender)
       .then((data) => sendResponse({ ok: true, data }))
       .catch((err: unknown) =>
@@ -538,6 +705,11 @@ chrome.runtime.onInstalled.addListener(() => {
   void chrome.storage.local.get(FAVORITES_KEY).then(({ [FAVORITES_KEY]: favs }) => {
     if (!Array.isArray(favs)) {
       void chrome.storage.local.set({ [FAVORITES_KEY]: [] })
+    }
+  })
+  void chrome.storage.local.get(TODO_STORAGE_KEY).then(({ [TODO_STORAGE_KEY]: todos }) => {
+    if (!Array.isArray(todos)) {
+      void chrome.storage.local.set({ [TODO_STORAGE_KEY]: [] })
     }
   })
 })

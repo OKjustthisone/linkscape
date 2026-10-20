@@ -55,6 +55,16 @@ export function formatDate(ts: number | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+/** 网址 -> 主机名（用于副标题展示）。 */
+export function urlHost(url: string | undefined): string {
+  if (!url) return ''
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
+}
+
 /** 转义正则特殊字符。 */
 export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

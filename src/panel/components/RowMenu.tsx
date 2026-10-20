@@ -23,6 +23,9 @@ export function RowMenu({ anchor, favorites, onAction, onClose }: RowMenuProps):
     action: 'toggle-favorite',
     label: favorites.has(node.id) ? '取消收藏' : '添加到收藏栏',
   })
+  if (!folder) {
+    items.push({ action: 'add-todo', label: '添加到 To do' })
+  }
   if (folder) {
     items.push({ action: 'new-bookmark', label: '在此新建书签' })
     items.push({ action: 'new-folder', label: '在此新建文件夹' })

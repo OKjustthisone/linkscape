@@ -11,6 +11,7 @@ export type NodeAction =
   | 'delete'
   | 'new-bookmark'
   | 'new-folder'
+  | 'add-todo'
 
 /** 弹层定位（相对面板/页面容器）。 */
 export interface MenuPos {
@@ -28,6 +29,7 @@ export type DialogState =
   | { kind: 'new-folder'; parentId: string; parentTitle?: string }
   | { kind: 'move'; ids: string[]; mode: 'move' | 'copy' }
   | { kind: 'confirm-delete'; ids: string[] }
+  | { kind: 'add-todo'; node: BookmarkNode }
 
 export const isFolderNode = (node: BookmarkNode): boolean =>
   node.url === undefined

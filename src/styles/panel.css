@@ -637,6 +637,166 @@
   padding: 0 1px;
 }
 
+/* ---------- To do 待办 ---------- */
+.ls-todo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ls-todo-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 4px 6px;
+  font-size: 11.5px;
+  color: var(--ls-text-faint);
+}
+.ls-todo-summary {
+  white-space: nowrap;
+}
+.ls-todo-group {
+  margin-bottom: 8px;
+}
+.ls-todo-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ls-text-dim);
+}
+.ls-todo-group-title {
+  white-space: nowrap;
+}
+.ls-todo-count {
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: var(--ls-active);
+  color: var(--ls-text-faint);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.ls-todo-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  display: inline-block;
+  border-radius: 50%;
+}
+.ls-todo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.ls-todo-row:hover {
+  background: var(--ls-hover);
+}
+.ls-todo-row.ls-done .ls-row-title {
+  text-decoration: line-through;
+  color: var(--ls-text-faint);
+}
+.ls-todo-row .ls-row-sub {
+  max-width: 100%;
+}
+.ls-todo-check {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 5px;
+  border: 1.5px solid var(--ls-border);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.ls-todo-check:hover {
+  border-color: var(--ls-accent);
+}
+.ls-todo-check.ls-on {
+  background: var(--ls-accent);
+  border-color: transparent;
+}
+.ls-todo-priority {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ls-todo-priority:hover {
+  background: var(--ls-hover);
+}
+.ls-todo-remove {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ls-text-faint);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.15s ease, color 0.15s ease;
+}
+.ls-todo-row:hover .ls-todo-remove {
+  opacity: 1;
+}
+.ls-todo-remove:hover {
+  background: rgba(229, 72, 77, 0.12);
+  color: var(--ls-danger);
+}
+
+/* 优先级选择（对话框） */
+.ls-priority-picker {
+  display: flex;
+  gap: 6px;
+}
+.ls-priority-option {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 9px;
+  border: 1px solid var(--ls-border);
+  background: var(--ls-bg-solid);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ls-priority-option:hover {
+  background: var(--ls-hover);
+}
+.ls-priority-option.ls-active {
+  border-color: currentColor;
+  box-shadow: 0 0 0 2px rgba(109, 94, 240, 0.12);
+}
+
 /* ---------- 底部工具栏 ---------- */
 .ls-footer {
   flex: none;

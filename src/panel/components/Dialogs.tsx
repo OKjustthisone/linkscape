@@ -1,8 +1,14 @@
-/** 面板内对话框：重命名 / 新建书签 / 新建文件夹 / 移动复制 / 删除确认。 */
+/** 面板内对话框：重命名 / 新建书签 / 新建文件夹 / 移动复制 / 删除确认 / 添加到 To do。 */
 
 import { useMemo, useState } from 'react'
 import type { BookmarkNode, BookmarkTree } from '../../shared/bookmark-types'
 import { isFolder, isSpecialRootId } from '../../shared/bookmark-types'
+import {
+  TODO_PRIORITY_COLOR,
+  TODO_PRIORITY_FULL_LABEL,
+  TODO_PRIORITY_ORDER,
+  type TodoPriority,
+} from '../../shared/todo-types'
 import { collectIdsWithDescendants } from '../../shared/tree-utils'
 import { FolderIcon } from './Icons'
 import type { DialogState } from '../types'
@@ -46,6 +52,7 @@ export function Dialogs({ dialog, tree, onClose, onSubmit }: DialogsProps): JSX.
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [destId, setDestId] = useState('')
+  const [priority, setPriority] = useState<TodoPriority>('medium')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   // 派生：移动/复制时被禁用的目标（自身 + 后代）
@@ -66,7 +73,7 @@ export function Dialogs({ dialog, tree, onClose, onSubmit }: DialogsProps): JSX.
       dialog.kind +
       (dialog.kind === 'move'
         ? dialog.ids.join(',')
-        : dialog.kind === 'rename'
+        : dialog.kind === 'rename' || dialog.kind === 'add-todo'
           ? dialog.node.id
           : ''),
     [dialog]
@@ -79,6 +86,7 @@ export function Dialogs({ dialog, tree, onClose, onSubmit }: DialogsProps): JSX.
     setError('')
     setBusy(false)
     setDestId('')
+    setPriority('medium')
   }
 
   const submit = async (values: Record<string, string>): Promise<void> => {
@@ -188,8 +196,49 @@ export function Dialogs({ dialog, tree, onClose, onSubmit }: DialogsProps): JSX.
     )
   }
 
-  if (dialog.kind === 'confirm-delete') {
-    const n = dialog.ids.length
+  if (dialog.kind === 'add-todo') {
+    return (
+      <div className="ls-overlay">
+        <form
+          className="ls-modal"
+          onSubmit={(e) => {
+            prevent(e)
+            void submit({ priority })
+          }}
+        >
+          <h3>添加到 To do</h3>
+          <div className="ls-field">
+            <label>标题</label>
+            <input value={dialog.node.title} readOnly />
+          </div>
+          <div className="ls-field">
+            <label>优先级</label>
+            <div className="ls-priority-picker">
+              {TODO_PRIORITY_ORDER.map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`ls-priority-option ${priority === p ? 'ls-active' : ''}`}
+                  style={{ color: TODO_PRIORITY_COLOR[p] }}
+                  onClick={() => setPriority(p)}
+                >
+                  <span
+                    className="ls-todo-dot"
+                    style={{ background: TODO_PRIORITY_COLOR[p] }}
+                  />
+                  {TODO_PRIORITY_FULL_LABEL[p]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ErrorLine error={error} />
+          <Actions busy={busy} onCancel={onClose} okLabel="添加" />
+        </form>
+      </div>
+    )
+  }
+
+  if (dialog.kind === 'confirm-delete') {    const n = dialog.ids.length
     return (
       <div className="ls-overlay">
         <form
